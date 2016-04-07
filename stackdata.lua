@@ -5,11 +5,11 @@ stacks = {}
 
 stacks.path = 'stacks.t7'
 --stack02
-stacks.final = torch.Tensor(30,500,500)
+stacks.final = torch.Tensor(30,1,500,500)
 
 --stack04/06, four flips four data augmentation
-stacks.input = torch.Tensor(1,500,500)
-stacks.output = torch.Tensor(1,500,500)
+stacks.input = torch.Tensor(1,1,500,500)
+stacks.output = torch.Tensor(1,1,500,500)
 
 function stacks.load(override, save)
     override = override or false
@@ -29,7 +29,7 @@ function stacks.load(override, save)
         local index = 1
         local perm = torch.randperm(total)
 
-        stacks.input = torch.Tensor(total, 500, 500)
+        stacks.input = torch.Tensor(total, 1, 500, 500)
         stacks.output = torch.Tensor(total, 500, 500)
 
         print('loading ' .. total .. ' samples')
@@ -50,7 +50,7 @@ function stacks.load(override, save)
                         --add using permutation matrix
                         local reali = perm[index]
                         index = index + 1
-                        stacks.input[reali] = t1
+                        stacks.input[reali][1] = t1
                         stacks.output[reali] = t2
 
                         t1 = image.hflip(t1)
@@ -98,23 +98,3 @@ function stacks.load(override, save)
         stacks = torch.load(stacks.path)
     end
 end
---load stack 4
---for x = 0,29 do
---    local index = x+1
---    local inputT = torch.Tensor(1, 500, 500)
---    inputT[1] = image.load('data/stack04/04_raw-'..x..'.png')
---    input[index] = inputT
---    local outputT = torch.Tensor(1, 500, 500)
---    outputT[1] = image.load('data/stack04/04_lbl-'..x..'.png')
---    output[index] = outputT 
---end
-----load stack 6
---for x = 0,29 do
---    local index = x+31
---    local inputT = torch.Tensor(1, 500, 500)
---    inputT[1] = image.load('data/stack06/06_raw-'..x..'.png')
---    input[index] = inputT
---    local outputT = torch.Tensor(1, 500, 500)
---    outputT[1] = image.load('data/stack06/06_lbl-'..x..'.png')
---    output[index] = outputT 
---end
