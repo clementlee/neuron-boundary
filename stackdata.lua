@@ -11,9 +11,8 @@ stacks.final = torch.Tensor(30,1,500,500)
 stacks.input = torch.Tensor(1,1,500,500)
 stacks.output = torch.Tensor(1,1,500,500)
 
-function stacks.load(override, save)
+function stacks.load(override)
     override = override or false
-    save = save or false
     if not paths.filep(stacks.path) or override then
         local augfactor = 4*2*2 --rotate, vflip, hflip
 
@@ -34,13 +33,13 @@ function stacks.load(override, save)
 
         print('loading ' .. total .. ' samples')
 
-        function add_pair(t1, t2) 
+        local function add_pair(t1, t2) 
             --binarize output
             t2:apply(function(x)
                 if x == 0 then
-                    return x
-                else
                     return 1
+                else
+                    return 0
                 end
             end)
 
@@ -89,12 +88,11 @@ function stacks.load(override, save)
             local t1 = image.load('data/stack02/02_raw-' .. loadi .. '.png')
             stacks.final[x] = t1
         end
-
-        --save
-        if save then
-            torch.save(stacks.path, stacks)
-        end
     else
         stacks = torch.load(stacks.path)
     end
+end
+
+function stacks.save() 
+    torch.save(stacks.path, stacks)
 end

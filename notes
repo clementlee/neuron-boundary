@@ -1,0 +1,6 @@
+TODO
+- weight initialization
+- data augmentation
+- load stack 07
+- load minibatches to and from GPU memory
+    - sampling instead of holding dataset?
