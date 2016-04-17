@@ -108,7 +108,7 @@ function BCECriterionA:updateGradInput(input, target)
     --
     --temp:resizeAs(gradInput)
     gradInput:mul(target, -2*beta):add(target):add(beta-1):mul(-1):cmul(input)
-    gradInput:add(target, -1*beta)
+    gradInput:add(-1*beta, target)
 
     
 

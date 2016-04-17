@@ -17,6 +17,7 @@ weights[1] = 0.9
 weights[2] = 0.1
 --criterion = cudnn.SpatialCrossEntropyCriterion(weights):cuda()
 criterion = nn.BCECriterionA():cuda()
+--criterion = nn.BCECriterion():cuda()
 
 --container to produce two classes
 --mcont = nn.Sequential()
@@ -35,7 +36,7 @@ criterion = nn.BCECriterionA():cuda()
 parameters, gradParameters = model:getParameters()
 
 sgdState = {
-    learningRate = 0.1,
+    learningRate = 1,
     weightDecay = 0.00005,
     momentum = 0.9,
     learningRateDecay = 1e-7
@@ -51,11 +52,11 @@ function train()
     epoch = epoch or 1
     local time = sys.clock()
 
-    --if epoch % 25 ==  0 then sgdState.learningRate = sgdState.learningRate/2 end
+    if epoch % 25 ==  0 then sgdState.learningRate = sgdState.learningRate/2 end
 
-    local batchsize = 4
+    local batchsize = 32
 
-    local trainsize = 8--stacks.input:size(1)
+    local trainsize = stacks.input:size(1)
 
     print('training epoch #' .. epoch..', batchsize = '..batchsize..' datasize = '..trainsize)
     --targets = torch.CudaTensor(batchsize)
@@ -98,7 +99,7 @@ function train()
             --flatt = targets:reshape(batchsize * 500*500)
             --flatt:add(1)
             --
-            if epoch % 10 == 0 then
+            if i % 48 == 0 then
                 output = output:view(batchsize*500*500):add(1):round()
                 targets = targets:view(batchsize*500*500):add(1)
 
@@ -120,12 +121,12 @@ function train()
 
     time = sys.clock() - time
 
-    if epoch % 10 == 0 then 
+    if epoch % 1 == 0 then 
         confusion:updateValids()
         print(confusion)
     end
     print('completed in ' .. (time*1000) .. 'ms')
-    if epoch % 10 == 0 then 
+    if epoch % 1 == 0 then 
         print('training accuracy: ' .. (confusion.totalValid*100))
     end
 
@@ -136,7 +137,7 @@ end
 
 while true do
     train()
-    if epoch % 50 == 0 then
+    if epoch % 5 == 0 then
         savemodel()
     end
 end
