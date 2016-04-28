@@ -2,7 +2,7 @@ local BCECriterionA, parent = torch.class('nn.BCECriterionA', 'nn.Criterion')
 
 local eps = 1e-12
 
-local beta = 0.20
+local beta = 0.80
 
 local temp = torch.FloatTensor()
 
@@ -49,17 +49,17 @@ function BCECriterionA:updateOutput(input, target)
     -- log(input) * target * beta
     buffer:add(input, eps):log()
     if weights ~= nil then buffer:cmul(weights) end
-    buffer:mul(beta)
+    --buffer:mul(beta)
 
-    output = torch.dot(target, buffer)
+    output = torch.dot(target, buffer) * beta
 
     -- log(1 - input) * (1 - target)
     buffer:mul(input, -1):add(1):add(eps):log()
     if weights ~= nil then buffer:cmul(weights) end
-    buffer:mul(1-beta)
+    --buffer:mul(1-beta)
 
-    output = output + torch.sum(buffer)
-    output = output - torch.dot(target, buffer)
+    output = output + torch.sum(buffer) * (1-beta)
+    output = output - torch.dot(target, buffer) * (1-beta)
 
     if self.sizeAverage then
         output = output / input:nElement()
@@ -102,13 +102,11 @@ function BCECriterionA:updateGradInput(input, target)
     -- x =  input
     -- z = beta
     -- y = target
-    -- - x (-2yz + y + z - 1) - yz
+    -- x (-2yz + y + z - 1) + yz
     --gradInput:add(target, -1, input)
     --
-    --
-    --temp:resizeAs(gradInput)
-    gradInput:mul(target, -2*beta):add(target):add(beta-1):mul(-1):cmul(input)
-    gradInput:add(-1*beta, target)
+    gradInput:mul(target, 1-2*beta):add(beta-1):cmul(input)
+    gradInput:add(beta, target)
 
     
 

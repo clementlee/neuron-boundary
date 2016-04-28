@@ -1,8 +1,8 @@
 require 'model'
 require 'optim'
+require 'xlua'
 require 'CustomCriterion'
 
-loaded = false
 function trainload()
     if not loaded then
         stacks.load()
@@ -11,67 +11,44 @@ function trainload()
 end 
 
 trainload()
-
 weights = torch.zeros(2)
-weights[1] = 0.9
-weights[2] = 0.1
---criterion = cudnn.SpatialCrossEntropyCriterion(weights):cuda()
-criterion = nn.BCECriterionA():cuda()
---criterion = nn.BCECriterion():cuda()
-
---container to produce two classes
---mcont = nn.Sequential()
---mcont:add(model)
---tab = nn.ConcatTable()
---tab:add(nn.Identity())
---seq1 = nn.Sequential()
---seq1:add(nn.MulConstant(-1))
---seq1:add(nn.AddConstant(1))
---tab:add(seq1)
---mcont:add(tab)
---mcont:add(nn.JoinTable(2))
---
---mcont = mcont:cuda()
-
+weights[1] = 1/0.8
+weights[2] = 1/0.2
+criterion = cudnn.SpatialCrossEntropyCriterion(weights):cuda()
+--criterion = nn.BCECriterionA():cuda()
 parameters, gradParameters = model:getParameters()
 
-sgdState = {
-    learningRate = 1,
-    weightDecay = 0.00005,
-    momentum = 0.9,
-    learningRateDecay = 1e-7
+optState = {
+    learningRate = 1
 }
 
-confusion = optim.ConfusionMatrix(2)
-
-
+batchsize = 1
+--crossvalidratio = 0.05
+--totalsamples = stacks.input:size(1)
+--trainsize = math.floor((1-crossvalidratio)*totalsamples)
+trainsize = stacks.input:size(1)
 
 function train()
-    local net = model
     trainload()
+    model:training()
     epoch = epoch or 1
     local time = sys.clock()
 
-    if epoch % 25 ==  0 then sgdState.learningRate = sgdState.learningRate/2 end
+    if epoch % 5 ==  0 then optState.learningRate = optState.learningRate/2 end
 
-    local batchsize = 32
 
-    local trainsize = stacks.input:size(1)
 
-    print('training epoch #' .. epoch..', batchsize = '..batchsize..' datasize = '..trainsize)
-    --targets = torch.CudaTensor(batchsize)
-    --inputs = torch.CudaTensor(batchsize)
+    print(string.format('epoch #%d, batchsize=%d, trainsize=%d', epoch, batchsize, trainsize))
 
     local indices = torch.randperm(trainsize):long():split(batchsize)
     -- remove last element so that all the batches have equal size
     indices[#indices] = nil
 
     local i = 0
+    local totalc = 0
     for t,v in ipairs(indices) do
-        if i % 12 == 0 then 
-            io.write('.')
-            io.flush()
-        end
+        xlua.progress(t, #indices)
+
         local inputs = stacks.input:index(1, v)
         local targets = stacks.output:index(1, v)
         inputs = inputs:cuda()
@@ -87,57 +64,62 @@ function train()
 
             gradParameters:zero()
 
-            local output = net:forward(inputs)
+            local output = model:forward(inputs)
             local f = criterion:forward(output, targets)
+            totalc = totalc + (f*batchsize / #indices)
 
             local df_do = criterion:backward(output, targets)
-            net:backward(inputs, df_do)
-
-            --flato = output:reshape(batchsize, 2, 500*500)
-            --flato = flato:transpose(2,3)
-            --flato = flato:reshape(batchsize * 500*500, 2)
-            --flatt = targets:reshape(batchsize * 500*500)
-            --flatt:add(1)
-            --
-            if i % 48 == 0 then
-                output = output:view(batchsize*500*500):add(1):round()
-                targets = targets:view(batchsize*500*500):add(1)
-
-                confusion:batchAdd(output, targets)
-            end 
-            --confusion:batchAdd(flato, flatt)
+            model:backward(inputs, df_do)
 
             return f,gradParameters
         end
 
-        optim.sgd(feval, parameters, sgdState)
-
-        --remove from GPU
-        inputs = inputs:float()
-        targets = targets:float()
+        optim.adam(feval, parameters, optState)
         i = i + 1
     end
-    io.write('\n')
 
     time = sys.clock() - time
 
-    if epoch % 1 == 0 then 
-        confusion:updateValids()
-        print(confusion)
-    end
-    print('completed in ' .. (time*1000) .. 'ms')
-    if epoch % 1 == 0 then 
-        print('training accuracy: ' .. (confusion.totalValid*100))
-    end
-
-    confusion:zero()
+    print('error: '..totalc)
 
     epoch = epoch + 1
 end
 
-while true do
-    train()
-    if epoch % 5 == 0 then
+
+function trainloop()
+    while true do
+        train()
         savemodel()
+        if epoch % 5 == 0 then
+            sampleout()
+        end
     end
+end
+
+a = cudnn.SpatialSoftMax():cuda()
+function sampleout()
+    model:evaluate()
+    for i = 1,30 do
+        c = model:forward(stacks.s3[i]:view(1,1,500,500):cuda())
+        c = a:forward(c)
+        c = c[1][2]
+        c = c[1]
+        c:add(-1* c:min())
+        if c:max() ~= 0 then
+            c:div(c:max())
+        end
+        image.save('output/stack03/03_out'..('%.2d' % i)..'.png', c)
+    end
+    for i = 1,30 do
+        c = model:forward(stacks.s5[i]:view(1,1,500,500):cuda())
+        c = a:forward(c)
+        c = c[1][2]
+        c = c[1]
+        c:add(-1* c:min())
+        if c:max() ~= 0 then
+            c:div(c:max())
+        end
+        image.save('output/stack05/05_out'..('%.2d' % i)..'.png', c)
+    end
+    model:training()
 end

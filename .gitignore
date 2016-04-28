@@ -1,5 +1,6 @@
 # don't upload data
 data/
+output/
 
 # don't upload models
 *.t7
