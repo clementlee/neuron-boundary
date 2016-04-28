@@ -3,6 +3,7 @@ require 'cunn'
 require 'cudnn'
 require 'stackdata'
 
+cutorch.setDevice(2)
 model = nn.Sequential()
 
 local MaxPooling = cudnn.SpatialMaxPooling
@@ -14,25 +15,22 @@ if not paths.filep('model.t7') then
         return model
     end
 
-    addLayers(1,32):add(nn.SpatialDropout(0.3))
-    addLayers(32,32)
+    addLayers(1,16):add(nn.SpatialDropout(0.3))
+    addLayers(16,16)
     local pool1 = MaxPooling(2,2,2,2):ceil()
     model:add(pool1)
-    addLayers(32,64):add(nn.SpatialDropout(0.4))
-    addLayers(64,64)
+    addLayers(16,32):add(nn.SpatialDropout(0.4))
+    addLayers(32,32)
     local pool2 = MaxPooling(2,2,2,2):ceil()
     model:add(pool2)
-    addLayers(64,128):add(nn.SpatialDropout(0.4))
-    addLayers(128,128):add(nn.SpatialDropout(0.4))
-    addLayers(128,128):add(nn.SpatialDropout())
-    addLayers(128,64)
+    addLayers(32,32):add(nn.SpatialDropout(0.4))
+    addLayers(32,32):add(nn.SpatialDropout(0.4))
     model:add(nn.SpatialUpSamplingNearest(2))
-    addLayers(64,64):add(nn.SpatialDropout())
-    addLayers(64,64)
-    model:add(nn.SpatialUpSamplingNearest(2))
-    addLayers(64,32):add(nn.SpatialDropout())
     addLayers(32,32):add(nn.SpatialDropout())
-    addLayers(32,2)
+    addLayers(32,16)
+    model:add(nn.SpatialUpSamplingNearest(2))
+    addLayers(16,16):add(nn.SpatialDropout())
+    addLayers(16,2)
 
     local function MSRinit(net)
         local function init(name)

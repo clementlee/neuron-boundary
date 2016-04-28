@@ -11,10 +11,10 @@ function trainload()
 end 
 
 trainload()
-weights = torch.zeros(2)
-weights[1] = 1/0.8
-weights[2] = 1/0.2
-criterion = cudnn.SpatialCrossEntropyCriterion(weights):cuda()
+--weights = torch.zeros(2)
+--weights[1] = 1/0.8
+--weights[2] = 1/0.2
+criterion = cudnn.SpatialCrossEntropyCriterion():cuda()
 --criterion = nn.BCECriterionA():cuda()
 parameters, gradParameters = model:getParameters()
 
@@ -34,7 +34,7 @@ function train()
     epoch = epoch or 1
     local time = sys.clock()
 
-    if epoch % 5 ==  0 then optState.learningRate = optState.learningRate/2 end
+    if epoch % 1 ==  0 then optState.learningRate = optState.learningRate/2 end
 
 
 
@@ -66,7 +66,7 @@ function train()
 
             local output = model:forward(inputs)
             local f = criterion:forward(output, targets)
-            totalc = totalc + (f*batchsize / #indices)
+            totalc = totalc + math.abs(f)
 
             local df_do = criterion:backward(output, targets)
             model:backward(inputs, df_do)
@@ -80,7 +80,7 @@ function train()
 
     time = sys.clock() - time
 
-    print('error: '..totalc)
+    print('error: '..(totalc/trainsize))
 
     epoch = epoch + 1
 end
@@ -90,7 +90,7 @@ function trainloop()
     while true do
         train()
         savemodel()
-        if epoch % 5 == 0 then
+        if epoch % 10 == 0 then
             sampleout()
         end
     end
@@ -103,7 +103,6 @@ function sampleout()
         c = model:forward(stacks.s3[i]:view(1,1,500,500):cuda())
         c = a:forward(c)
         c = c[1][2]
-        c = c[1]
         c:add(-1* c:min())
         if c:max() ~= 0 then
             c:div(c:max())
@@ -114,7 +113,6 @@ function sampleout()
         c = model:forward(stacks.s5[i]:view(1,1,500,500):cuda())
         c = a:forward(c)
         c = c[1][2]
-        c = c[1]
         c:add(-1* c:min())
         if c:max() ~= 0 then
             c:div(c:max())
